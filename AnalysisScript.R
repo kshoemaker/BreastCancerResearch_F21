@@ -13,4 +13,22 @@ data %>% filter(diagnosis == "B") %>% select_if(is.numeric) %>% select(contains(
 # also look at the se and worst too
 
 # look at how the variables are differently distributed between the two groups
-data %>% group_by(diagnosis) %>% ggplot(aes(x = radius_mean, col = diagnosis))  + geom_density()
+data %>% group_by(diagnosis) %>% ggplot(aes(x = smoothness_mean, col = diagnosis))  + geom_density()
+
+
+#########
+# Logistic Regression
+
+library(ISLR)
+library(tidyverse)
+
+data(Default)
+glimpse(Default)
+default_lm <- glm(default ~ balance, family = "binomial", data = Default)
+summary(default_lm)
+
+
+predict(default_lm, data = Default, type = "response")
+
+
+
