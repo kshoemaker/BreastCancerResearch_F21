@@ -1,0 +1,173 @@
+---
+title: "AnalysisScript - Breast Cancer Wisconsin (Diagnostic)"
+author: "Thanh La, Son Luong"
+date: "10/17/2021"
+output:
+  pdf_document: default
+  html_document: default
+director: Dr. Katherine Shoemaker
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(reshape2)
+library(reshape)
+library(ggplot2)
+library(GGally)
+library(ISLR)
+library(caret)
+  
+```
+
+
+```{r}
+workfile <- read.csv("data.csv")
+numeric_workfile <- workfile[,3:32 ]
+```
+
+# workfile Exploration
+
+```{r}
+colnames(workfile)
+```
+
+```{r}
+summary(numeric_workfile)
+all(is.na(workfile))
+```
+```{r, warning=F}
+#mean of each varible, group by diagnosis
+workfile_mean <- workfile %>% group_by(diagnosis)%>%summarise_at(vars(-id),funs(mean(., na.rm=TRUE)))
+```
+
+# workfile Visualization
+
+# I. Relationship Between Variable
+
+```{r}
+group = NA
+group[workfile$diagnosis == "B"] = 1
+group[workfile$diagnosis == "M"] = 2
+
+
+workfile %>% 
+  select_if(is.numeric) %>% 
+  select(contains("mean")) %>% 
+  pairs(col = c("blue", "red")[group], main = "The relationship between 'Mean' variable")
+
+workfile %>% 
+  select_if(is.numeric) %>% 
+  select(contains("SE")) %>% 
+  pairs(col = c("blue", "red")[group], main = "The relationship between 'Standard Error' variable")
+
+workfile %>% 
+  select_if(is.numeric) %>% 
+  select(contains("worst")) %>% 
+  pairs(col = c("blue", "red")[group], main = "The relationship between 'Worst' variable") 
+```
+
+# II. Differently Distributed Between Two Group of Diagnosis
+
+# look at how the variables are differently distributed between the two groups
+
+# these variables below are greatly different among 2 group of diagnosis
+
+```{r}
+ggpairs(workfile[,c(3:12,2)], aes(color=diagnosis, alpha=0.5), lower=list(continuous="smooth"))
+```
+```{r}
+ggpairs(workfile[,c(13:22,2)], aes(color=diagnosis, alpha=0.5), lower=list(continuous="smooth"))
+```
+```{r}
+ggpairs(workfile[,c(23:32,2)], aes(color=diagnosis, alpha=0.5), lower=list(continuous="smooth"))
+```
+
+# III. Logistic Regression Model1
+```{r}
+workfile$diagnosis = as.factor(workfile$diagnosis)
+workfile = subset(workfile, select = -c(id))
+```
+
+```{r}
+head(workfile)
+```
+
+
+Apply logistic regression to data that contain only mean variable
+```{r}
+workfile_glm = glm(diagnosis~., family = "binomial", data = workfile)
+
+# radius_mean + radius_se + radius_worst + texture_mean + texture_se + texture_worst + area_mean + area_se + area_worst + smoothness_mean + smoothness_se + smoothness_worst + concavity_mean + concavity_se + concavity_worst + concave.points_mean + concave.points_se + concave.points_worst + fractal_dimension_mean +  fractal_dimension_se + fractal_dimension_worst
+
+```
+```{r}
+summary(workfile_glm)
+```
+
+
+
+```{r}
+y_hat = predict(workfile_glm, data = workfile, type = "response")
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "M"
+predicted_class[y_hat <= 0.5] <- "B"
+predicted_class <- as.factor(predicted_class)
+```
+
+```{r}
+## the output of this function is the *probability* of being in the second class
+levels(workfile$diagnosis)
+levels(predicted_class)
+```
+
+```{r}
+# table(predicted_class, mean_workfile$diagnosis)
+confusionMatrix(predicted_class, workfile$diagnosis)
+```
+
+To make the logistic regression model more efficient (or improve the probability of the prediction), I will separate the characteristic variable to different part such as: size, shape, surface
++ Size: Radius, perimeter, area, compactness, fractal dimension
++ shape, surface: texture, smoothness, concavity, concave.points, symmetry, fractal dimension
+
+Size: 
+
+```{r}
+workfile_glm = glm(diagnosis~ radius_mean + radius_se + radius_worst + perimeter_mean + perimeter_se + perimeter_worst + area_mean + area_se + area_worst + compactness_mean + compactness_se + compactness_worst + fractal_dimension_mean +  fractal_dimension_se + fractal_dimension_worst, family = "binomial", data = workfile)
+```
+```{r}
+summary(workfile_glm)
+```
+```{r}
+y_hat = predict(workfile_glm, data = workfile, type = "response")
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "M"
+predicted_class[y_hat <= 0.5] <- "B"
+predicted_class <- as.factor(predicted_class)
+
+confusionMatrix(predicted_class, workfile$diagnosis)
+```
+
+Shape, Surface:
+
+texture, smoothness, concavity, concave.points, symmetry, fractal dimension
+
+```{r}
+workfile_glm = glm(diagnosis~ texture_mean + texture_se + texture_worst + smoothness_mean + smoothness_se + smoothness_worst + concavity_mean + concavity_se + concavity_worst + concave.points_mean + concave.points_se + concave.points_worst + symmetry_mean + symmetry_se + symmetry_worst + fractal_dimension_mean +  fractal_dimension_se + fractal_dimension_worst, family = "binomial", data = workfile)
+```
+```{r}
+summary(workfile_glm)
+```
+```{r}
+y_hat = predict(workfile_glm, data = workfile, type = "response")
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "M"
+predicted_class[y_hat <= 0.5] <- "B"
+predicted_class <- as.factor(predicted_class)
+
+confusionMatrix(predicted_class, workfile$diagnosis)
+```
+
