@@ -106,7 +106,7 @@ levels(data$diagnosis)
 library(palmerpenguins)
 penguins
 
-my_penguin <- penguins %>% na.omit() %>% filter(species %in% c("Adelie", "Gentoo")) 
+my_penguin <- penguins %>% na.omit() %>% filter(species %in% c("Adelie", "Gentoo"))  %>% mutate(species = droplevels(species))
 
 ## with multiple variables, pick a few and then use the accuracy of the model to find a good combination of variables
 ## you will need to use "as.factor" on the y to change it from a character vector to a factor
@@ -198,6 +198,7 @@ table(predicted_class, test_bc$Class)
 ###########################################################
 
 library(caret)
+
 train_control <- trainControl(method = "cv", number = 10)
 
 # train the model on training set
@@ -207,8 +208,8 @@ model <- train(species ~ flipper_length_mm,
                method = "glm",
                family=binomial())
 
-# print cv scores
-summary(model)
+# print cv accuracy
+model
 
 
 
