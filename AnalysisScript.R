@@ -100,3 +100,115 @@ levels(data$diagnosis)
 
 
 
+###### Validation SET
+
+# install.packages("palmerpenguins")
+library(palmerpenguins)
+penguins
+
+my_penguin <- penguins %>% na.omit() %>% filter(species %in% c("Adelie", "Gentoo")) 
+
+## with multiple variables, pick a few and then use the accuracy of the model to find a good combination of variables
+## you will need to use "as.factor" on the y to change it from a character vector to a factor
+## Or use strings.as.Factors == T
+
+
+#### 
+n <- nrow(my_penguin) # setting the sample size
+test <- sample(1:n, 26, replace = F)
+## test is the indexes of the validation set
+
+## set the train and test parts of the data
+test_pens <- my_penguin[test, ]
+train_pens <- my_penguin[-test, ]
+
+validate_penguin_model <- glm(species ~ flipper_length_mm   , family = "binomial",  data = train_pens)
+summary(validate_penguin_model)
+
+## the output of this function is the *probability* of being in the second class, in this case, Chinstrap
+## NOW we predict on the test data
+y_hat <- predict(validate_penguin_model, newdata = test_pens, type = "response")
+
+
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "Gentoo"
+predicted_class[y_hat <= 0.5] <- "Adelie"
+predicted_class <- as.factor(predicted_class)
+
+## table of my predictions vs the truth
+table(predicted_class, test_pens$species)
+
+
+####### Doing logistic regression with "worse" data #######
+###########################################################
+set.seed(1389)
+## install.packages("mlbench")
+data(BreastCancer, package="mlbench")
+bc <- BreastCancer %>% na.omit()  # create copy, removing rows with missing data
+bc <- bc[, -1] # remove ID column
+# this data has some weird variable types, so we want them to be numbers
+for (i in 1:9) {
+  bc[, i] <- as.numeric(as.character(bc[, i]))
+}
+
+glimpse(bc)
+levels(bc$Class)
+
+bc_model <- glm(Class ~ ., family = 'binomial', data = bc)
+summary(bc_model)
+
+y_hat <- predict(bc_model, data = bc, type = "response")
+
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "malignant"
+predicted_class[y_hat <= 0.5] <- "benign"
+predicted_class <- as.factor(predicted_class)
+
+table(predicted_class, bc$Class)
+(434 + 228) / nrow(bc)
+## 96.93% accuracy 
+
+## validation set
+
+n <- nrow(bc)
+test_index <- sample(1:n, floor(n/5), replace = F)  ## floor(n/5) takes n/5 and rounds it down to nearest whole number
+test_bc <- bc[test_index, ]
+train_bc <- bc[-test_index, ]
+
+
+validated_bc_model <- glm(Class ~ ., family = 'binomial', data = train_bc) # model with the train data
+summary(bc_model)
+
+y_hat <- predict(bc_model, newdata = test_bc, type = "response") ## predict on the 'new' data
+
+predicted_class <- vector(length = length(y_hat))
+predicted_class[y_hat > 0.5] <- "malignant"
+predicted_class[y_hat <= 0.5] <- "benign"
+predicted_class <- as.factor(predicted_class)
+
+table(predicted_class, test_bc$Class)
+(83 + 46) / nrow(test_bc)
+# 94.8% accuracy
+  # this will change if you change the set.seed()
+
+
+
+
+## k-fold CV using the caret package
+###########################################################
+
+library(caret)
+train_control <- trainControl(method = "cv", number = 10)
+
+# train the model on training set
+model <- train(species ~ flipper_length_mm,
+               data = my_penguin,
+               trControl = train_control,
+               method = "glm",
+               family=binomial())
+
+# print cv scores
+summary(model)
+
+
+
